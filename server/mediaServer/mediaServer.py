@@ -4,16 +4,17 @@ import time
 
 class MediaServer():
     def __init__(self, ip: str = "0.0.0.0", port: int = 4000, maximum_user: int = 2):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.rtsp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # RTSP uses TCP, RTP uses UDP
         self.ip = ip
         self.port = [port]
-        self.maximum_user = maximum_user
+        # self.maximum_user = maximum_user
         self.users = {}
         self.thread_send = {}
         self.thread_recv = {}
 
     def start(self):
-        print("Server start at %s:%d" % (self.ip, self.port[0]))
+        print("Media server start at %s:%d" % (self.ip, self.port[0]))
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind((self.ip, self.port[0]))
 
