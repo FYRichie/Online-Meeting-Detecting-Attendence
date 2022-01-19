@@ -121,7 +121,7 @@ class MediaServer():
         recv_socket.settimeout(self.RTP_TIMEOUT / 1000.)
 
         while True:
-            if self.users[user_url].RTSP_STATUS == RTSPPacket.PLAY:
+            if self.users[user_url].RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
                 recv = bytes()
                 while True:
                     try:
@@ -151,7 +151,7 @@ class MediaServer():
         send_socket.settimeout(self.RTP_TIMEOUT / 1000.)
 
         while True:
-            if self.users[user_url].RTSP_STATUS in [RTSPPacket.PLAY, RTSPPacket.PAUSE]:
+            if self.users[user_url].RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
                 payload = {}
                 for user in self.users:
                     if user != user_url and self.users[user].RTSP_STATUS in [RTSPPacket.PLAY]:
