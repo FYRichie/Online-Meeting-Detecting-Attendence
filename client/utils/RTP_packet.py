@@ -1,3 +1,6 @@
+from email import header
+
+
 class RTPPacket:
     HEADER_SIZE = 12
     VERSION = 0b10
@@ -48,7 +51,7 @@ class RTPPacket:
     @classmethod
     def from_packet(cls, packet: bytes):
         if len(packet) < cls.HEADER_SIZE:
-            raise Exception("Packet length is shorter than RTP header size.")
+            raise RuntimeError("Packet length is shorter than RTP header size.")
 
         header = packet[: cls.HEADER_SIZE]
         payload = packet[cls.HEADER_SIZE :]

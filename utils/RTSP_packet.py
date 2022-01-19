@@ -88,4 +88,3 @@ class RTSPPacket:
             request_lines.append(f"Session: {self.session}")
         request = "\r\n".join(request_lines) + "\r\n"
         return request.encode()
-        
