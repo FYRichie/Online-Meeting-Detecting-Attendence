@@ -16,7 +16,6 @@ class RTPPacket:
         BOTH = 2
         NONE = 3
 
-
     def __init__(
         self,
         payload_type: int = None,
@@ -29,7 +28,7 @@ class RTPPacket:
         self.sequence_num = sequence_num
         self.timestamp = timestamp
 
-        zeroth_byte = (self.VERSION << 6) | (self.PADDING << 5) | (self.EXTENSION << 4) | self.CC
+        zeroth_byte = (self.VERSION << 6) | (self.PADDING << 5) | (self.EXTENSION << 4) | self.CONTRIBUTOR_COUNT
         first_byte = (self.MARKER << 7) | self.payload_type
         second_byte = self.sequence_num >> 8
         third_byte = self.sequence_num & 0xFF
