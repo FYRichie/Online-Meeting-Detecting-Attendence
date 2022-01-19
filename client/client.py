@@ -61,6 +61,7 @@ class MediaClient():
                             ).to_bytes()
             self.mediaServer.send(req)
             while self.RTSP_STATUS != RTSPPacket.SETUP:
+                print("debug")
                 message = self.mediaServer.recv(self.SERVER_BUFFER)
                 packet = RTSPPacket.from_bytes(message)
                 if packet.request_type == RTSPPacket.SETUP:
