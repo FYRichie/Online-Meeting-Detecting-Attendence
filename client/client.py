@@ -51,7 +51,14 @@ class MediaClient():
 
     def Send_SETUP_request(self):
         if self.RTSP_STATUS == RTSPPacket.INVALID:
-            req = RTSPPacket(request_type = RTSPPacket.SETUP, cseq = self.Cseq).to_bytes()
+            req = RTSPPacket(
+                            request_type = RTSPPacket.SETUP,
+                            cseq = self.Cseq,
+                            session = 0,
+                            dst_port = self.RTSP_port,
+                            name = "",
+                            ip = self.RTSP_IP
+                            ).to_bytes()
             self.mediaServer.send(req)
             while self.RTSP_STATUS != RTSPPacket.SETUP:
                 message = self.mediaServer.recv(self.SERVER_BUFFER)
@@ -65,7 +72,14 @@ class MediaClient():
 
     def Send_PLAY_request(self):
         if self.RTSP_STATUS == RTSPPacket.SETUP or self.RTSP_STATUS == RTSPPacket.PAUSE:
-            req = RTPPacket(request_type = RTSPPacket.PLAY, cseq = self.Cseq).to_bytes()
+            req = RTPPacket(
+                            request_type = RTSPPacket.PLAY,
+                            cseq = self.Cseq,
+                            session = 0,
+                            dst_port = self.RTSP_port,
+                            name = "",
+                            ip = self.RTSP_IP
+                            ).to_bytes()
             self.mediaServer.send(req)
             while self.RTSP_STATUS != RTSPPacket.PLAY:
                 message = self.mediaServer.recv(self.SERVER_BUFFER)
@@ -77,7 +91,14 @@ class MediaClient():
 
     def Send_PAUSE_request(self):
         if self.RTSP_STATUS == RTSPPacket.PLAY:
-            req = RTPPacket(request_type = RTSPPacket.PAUSE, cseq = self.Cseq).to_bytes()
+            req = RTPPacket(
+                            request_type = RTSPPacket.PAUSE,
+                            cseq = self.Cseq,
+                            session = 0,
+                            dst_port = self.RTSP_port,
+                            name = "",
+                            ip = self.RTSP_IP
+                            ).to_bytes()
             self.mediaServer.send(req)
             while self.RTSP_STATUS != RTSPPacket.PAUSE:
                 message = self.mediaServer.recv(self.SERVER_BUFFER)
@@ -88,7 +109,14 @@ class MediaClient():
 
     def Send_TEARDOWN_request(self):
         if self.RTSP_STATUS != RTSPPacket.TEARDOWN:
-            req = RTPPacket(request_type = RTSPPacket.TEARDOWN, cseq = self.Cseq).to_bytes()
+            req = RTPPacket(
+                            request_type = RTSPPacket.TEARDOWN,
+                            cseq = self.Cseq,
+                            session = 0,
+                            dst_port = self.RTSP_port,
+                            name = "",
+                            ip = self.RTSP_IP
+                            ).to_bytes()
             self.mediaServer.send(req)
             while self.RTSP_STATUS != RTSPPacket.TEARDOWN:
                 message = self.mediaServer.recv(self.SERVER_BUFFER)
@@ -147,5 +175,3 @@ class MediaClient():
                 bytes(payload)
             ).get_packet()
             send_socket.sendto(packet, (ip, port))
-        
-    
