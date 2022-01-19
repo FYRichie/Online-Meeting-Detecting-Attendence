@@ -6,7 +6,7 @@ class RTPPacket:
     VERSION = 0b10
     PADDING = 0b0
     EXTENSION = 0b0
-    CONTRIBUTOR_COUNT = 0x3
+    CONTRIBUTOR_COUNT = 0x0
     MARKER = 0b0
     SSRC = 0x00000000
 

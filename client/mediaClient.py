@@ -5,8 +5,7 @@ from PyQt5.QtCore import pyqtSignal, QTimer, Qt
 from PIL.ImageQt import ImageQt
 import cv2
 
-
-from .client import MediaClient as Client
+from client import MediaClient as Client
 from utils.camera_stream import CameraStream
 
 
@@ -15,10 +14,8 @@ class ClientWindow(QMainWindow):
     time_interval = 100
     def __init__(
             self,
-            file_name: str,
             host_address: str,
             host_port: int,
-            rtp_port: int,
             parent=None):
         super(ClientWindow, self).__init__(parent)
         self.video_player = QLabel()
@@ -35,7 +32,8 @@ class ClientWindow(QMainWindow):
         self.tear_button = QPushButton()
         self.error_label = QLabel()
 
-        self._media_client = Client(file_name, host_address, host_port, rtp_port)
+        self._media_client = Client(host_address, host_port)
+        self._media_client.start()
         self._update_image_signal.connect(self.update_image)
         self._update_image_timer = QTimer()
         self._update_image_timer.timeout.connect(self._update_image_signal.emit)
