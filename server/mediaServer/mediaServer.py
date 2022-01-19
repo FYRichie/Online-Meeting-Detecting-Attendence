@@ -41,27 +41,27 @@ class MediaServer():
         client = self.users[user_url].client
         while True:
             message = client.recv(self.CLIENT_BUFFER)
-            packet = RTSPPacket.from_response(message)
+            packet = RTSPPacket.from_bytes(message)
 
-            if packet.type == RTSPPacket.SETUP:
+            if packet.request_type == RTSPPacket.SETUP:
                 if not self.users[user_url].is_setup:
                     last_port = self.PORT if len(self.RTPport) == 0 else self.RTPport[-1]
-                    self.users[user_url].RTP_recv_port = last_port + 1
-                    self.users[user_url].RTP_send_port = last_port + 2
                     self.RTPport.append(last_port + 1)
                     self.RTPport.append(last_port + 2)
 
-
+                    self.users[user_url].name = packet.name
+                    self.users[user_url].RTP_recv_port = last_port + 1
+                    self.users[user_url].RTP_send_port = last_port + 2
                     self.users[user_url].RTP_recv_thread = threading.Thread(target=self.RTP_recv, args=(user_url, ))
                     self.users[user_url].RTP_send_thread = threading.Thread(target=self.RTP_send, args=(user_url, ))
                     self.users[user_url].RTP_recv_thread.start()
                     self.users[user_url].RTP_send_thread.start()
 
-                    res = {
-                        "port_sendto": last_port + 1,  # Client sends to server "recv" port
-                        "port_recvfrom": last_port + 2
-                    }
-                    client.send(bytes(res))
+                    # res = {
+                    #     "port_sendto": last_port + 1,  # Client sends to server "recv" port
+                    #     "port_recvfrom": last_port + 2
+                    # }
+                    # client.send(bytes(res))
                 else:
                     print(
                         "User %s is setup already, using %d as recv port, %d as send port" % (
@@ -69,13 +69,13 @@ class MediaServer():
                             self.users[user_url].RTP_recv_port,
                             self.users[user_url].RTP_send_port
                     ))
-            elif packet.type == RTSPPacket.PLAY:
+            elif packet.request_type == RTSPPacket.PLAY:
                 # TODO
                 pass
-            elif packet.type == RTSPPacket.PAUSE:
+            elif packet.request_type == RTSPPacket.PAUSE:
                 # TODO
                 pass
-            elif packet.type == RTSPPacket.TEARDOWN:
+            elif packet.request_type == RTSPPacket.TEARDOWN:
                 # TODO
                 pass
 
@@ -106,7 +106,6 @@ class MediaServer():
                     continue
             payload = RTPPacket.from_packet(recv).get_payload()
             self.users[user_url].current_display = payload["img"]
-            self.users[user_url].name = payload["name"]
             time.sleep(self.SERVER_TIMEOUT / 1000.)
 
     def RTP_send(self, user_url: str):
