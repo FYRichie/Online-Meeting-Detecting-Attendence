@@ -45,9 +45,6 @@ class MediaServer():
         client = self.users[user_url].client
         while True:
             message = client.recv(self.CLIENT_BUFFER)
-            print("-------------")
-            print(message.decode())
-            print("-------------")
             packet = RTSPPacket.from_bytes(message)
 
             if packet.request_type == RTSPPacket.SETUP:
@@ -84,12 +81,30 @@ class MediaServer():
             elif packet.request_type == RTSPPacket.PLAY:
                 if self.users[user_url].RTSP_STATUS in [RTSPPacket.PAUSE, RTSPPacket.SETUP]:
                     self.users[user_url].RTSP_STATUS = RTSPPacket.PLAY
+                    res = RTSPPacket(
+                        request_type=packet.request_type,
+                        cseq=packet.cseq,
+                        session="none"
+                    ).to_bytes()
+                    client.send(res)
             elif packet.request_type == RTSPPacket.PAUSE:
                 if self.users[user_url].RTSP_STATUS == RTSPPacket.PLAY:
                     self.users[user_url].RTSP_STATUS = RTSPPacket.PAUSE
+                    res = RTSPPacket(
+                        request_type=packet.request_type,
+                        cseq=packet.cseq,
+                        session="none"
+                    ).to_bytes()
+                    client.send(res)
             elif packet.request_type == RTSPPacket.TEARDOWN:
                 if self.users[user_url].RTSP_STATUS != RTSPPacket.INVALID:
                     self.users[user_url].RTSP_STATUS = RTSPPacket.INVALID
+                    res = RTSPPacket(
+                        request_type=packet.request_type,
+                        cseq=packet.cseq,
+                        session="none"
+                    ).to_bytes()
+                    client.send(res)
                     self.users[user_url].RTP_recv_thread.terminate()
                     self.users[user_url].RTP_send_thread.terminate()
 
@@ -148,7 +163,7 @@ class MediaServer():
                     RTPPacket.TYPE.IMG,
                     int(time.time()),
                     int(time.time()),
-                    str(payload + CameraStream.IMG_END).encode()
+                    (str(payload) + CameraStream.IMG_END).encode()
                 ).get_packet()
                 send_socket.sendto(packet, (user_ip, user_port))
             time.sleep(self.SERVER_TIMEOUT / 1000.)
