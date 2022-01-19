@@ -4,8 +4,8 @@ import time
 
 class MediaServer():
     def __init__(self, ip: str = "0.0.0.0", port: int = 4000, maximum_user: int = 2):
-        # self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.rtsp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # RTSP uses TCP, RTP uses UDP
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # self.rtsp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # RTSP uses TCP, RTP uses UDP
         self.ip = ip
         self.port = [port]
         # self.maximum_user = maximum_user

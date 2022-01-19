@@ -1,1 +1,1 @@
-from mediaServer import MediaServer
+from .mediaServer import MediaServer
