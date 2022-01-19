@@ -57,11 +57,13 @@ class MediaServer():
                     self.users[user_url].RTP_recv_thread.start()
                     self.users[user_url].RTP_send_thread.start()
 
-                    # res = {
-                    #     "port_sendto": last_port + 1,  # Client sends to server "recv" port
-                    #     "port_recvfrom": last_port + 2
-                    # }
-                    # client.send(bytes(res))
+                    res = RTSPPacket(
+                        request_type=packet.request_type,
+                        cseq=packet.cseq,
+                        dst_port=packet.dst_port,
+                        name=packet.name
+                    ).to_bytes()
+                    client.send(res)
                 else:
                     print(
                         "User %s is setup already, using %d as recv port, %d as send port" % (

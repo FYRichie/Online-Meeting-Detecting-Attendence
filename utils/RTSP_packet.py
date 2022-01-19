@@ -1,4 +1,3 @@
-from email import message
 import re
 
 class RTSPPacket:
@@ -54,7 +53,7 @@ class RTSPPacket:
             session = response.get("session")
 
         return cls(
-            req_type=req_type,
+            request_type=req_type,
             cseq=cseq,
             ip=ip,
             session=session,
