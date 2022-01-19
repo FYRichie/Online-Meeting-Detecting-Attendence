@@ -60,7 +60,8 @@ class MediaServer():
                     res = RTSPPacket(
                         request_type=packet.request_type,
                         cseq=packet.cseq,
-                        dst_port=packet.dst_port,
+                        dst_port=self.users[user_url].RTP_recv_port,
+                        ip=self.IP,
                         name=packet.name
                     ).to_bytes()
                     client.send(res)

@@ -30,7 +30,7 @@ class RTSPPacket:
     def from_bytes(cls, data: bytes):
         match = re.match(
             r"(?P<request_type>\w+) rtsp://(?P<ip>\S+) (?P<rtsp_version>RTSP/\d+.\d+)\r?\n"
-            r"CSeq: (?P<cseq>\d+)\r?\n"
+            r"Cseq: (?P<cseq>\d+)\r?\n"
             r"(Transport: .*client_port=(?P<dst_port>\d+).*\r?\n)?"  # in case of SETUP request
             r"(Session: (?P<session>\d+)\r?\n)?"
             r"(a=name: (?P<name>)\r?\n)?",
