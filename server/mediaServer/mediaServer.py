@@ -1,5 +1,4 @@
 import socket
-# import threading
 from multiprocessing import Process
 import time
 from typing import Dict
@@ -8,6 +7,7 @@ from .user import User
 from .RTSP_packet import RTSPPacket
 from .RTP_packet import RTPPacket
 from .camera_stream import CameraStream
+
 
 class MediaServer():
     IP = "127.0.0.1"
@@ -49,6 +49,7 @@ class MediaServer():
 
             if packet.request_type == RTSPPacket.SETUP:
                 if self.users[user_url].RTSP_STATUS == RTSPPacket.INVALID:
+                    self.users[user_url].RTSP_STATUS = RTSPPacket.SETUP
                     last_port = self.PORT if len(self.RTPport) == 0 else self.RTPport[-1]
                     self.RTPport.append(last_port + 1)
                     self.RTPport.append(last_port + 2)
@@ -56,8 +57,6 @@ class MediaServer():
                     self.users[user_url].name = packet.name
                     self.users[user_url].RTP_recv_port = last_port + 1
                     self.users[user_url].RTP_send_port = last_port + 2
-                    # self.users[user_url].RTP_recv_thread = threading.Thread(target=self.RTP_recv, args=(user_url, ))
-                    # self.users[user_url].RTP_send_thread = threading.Thread(target=self.RTP_send, args=(user_url, ))
                     self.users[user_url].RTP_recv_thread = Process(target=self.RTP_recv, args=(user_url, ))
                     self.users[user_url].RTP_send_thread = Process(target=self.RTP_send, args=(user_url, ))
                     self.users[user_url].RTP_recv_thread.start()
@@ -79,11 +78,12 @@ class MediaServer():
                             self.users[user_url].RTP_send_port
                     ))
             elif packet.request_type == RTSPPacket.PLAY:
-                if self.users[user_url].RTSP_STATUS in [RTSPPacket.PAUSE, RTSPPacket.SETUP]:
+                if self.users[user_url].RTSP_STATUS not in [RTSPPacket.INVALID, RTSPPacket.TEARDOWN]:
                     self.users[user_url].RTSP_STATUS = RTSPPacket.PLAY
                     res = RTSPPacket(
                         request_type=packet.request_type,
                         cseq=packet.cseq,
+                        ip=self.IP,
                         session="none"
                     ).to_bytes()
                     client.send(res)
@@ -93,6 +93,7 @@ class MediaServer():
                     res = RTSPPacket(
                         request_type=packet.request_type,
                         cseq=packet.cseq,
+                        ip=self.IP,
                         session="none"
                     ).to_bytes()
                     client.send(res)
@@ -102,6 +103,7 @@ class MediaServer():
                     res = RTSPPacket(
                         request_type=packet.request_type,
                         cseq=packet.cseq,
+                        ip=self.IP,
                         session="none"
                     ).to_bytes()
                     client.send(res)
@@ -130,7 +132,7 @@ class MediaServer():
                             recv += data
                         else:
                             break
-                        if recv.endswith(CameraStream.IMG_END):
+                        if recv.endswith(CameraStream.IMG_END.encode()):
                             break
                     except socket.timeout:
                         continue
@@ -161,8 +163,8 @@ class MediaServer():
                         }
                 packet = RTPPacket(
                     RTPPacket.TYPE.IMG,
-                    int(time.time()),
-                    int(time.time()),
+                    0,
+                    0,
                     (str(payload) + CameraStream.IMG_END).encode()
                 ).get_packet()
                 send_socket.sendto(packet, (user_ip, user_port))
