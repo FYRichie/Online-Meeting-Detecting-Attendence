@@ -23,18 +23,27 @@ class RTSPPacket:
         self.session = session
         self.request_type = request_type
         self.dst_port = dst_port
-        self.name = name
+        self.name = name,
         self.ip = ip
+
+    def __str__(self) -> str:
+        return (
+            f"request_type: {self.request_type}"
+            f"cseq: {self.cseq}"
+            f"ip: {self.ip}"
+            f"session: {self.session}"
+            f"dst_port: {self.dst_port}"
+            f"name: {self.name}"
+        )
 
     @classmethod
     def from_bytes(cls, data: bytes):
-        print(data.decode())
         match = re.match(
             r"(?P<request_type>\w+) rtsp://(?P<ip>\S+) (?P<rtsp_version>RTSP/\d+.\d+)\r?\n"
             r"CSeq: (?P<cseq>\d+)\r?\n"
             r"(Transport: .*client_port=(?P<dst_port>\d+).*\r?\n)?"  # in case of SETUP request
-            r"(Session: (?P<session>\w+)\r?\n)?"
-            r"(a=name: (?P<name>\S+)\r?\n)?",
+            r"(Session: (?P<session>\d+)\r?\n)?"
+            r"(a=name: (?P<name>)\r?\n)?",
             data.decode()
         )
         response = match.groupdict()
@@ -79,4 +88,3 @@ class RTSPPacket:
             request_lines.append(f"Session: {self.session}")
         request = "\r\n".join(request_lines) + "\r\n"
         return request.encode()
-        

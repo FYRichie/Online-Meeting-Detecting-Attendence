@@ -74,7 +74,7 @@ class RTSPPacket:
     def to_bytes(self):
         request_lines = [
             f"{self.request_type} rtsp://{self.ip} {self.RTSP_VERSION}",
-            f"Cseq: {self.cseq}"
+            f"CSeq: {self.cseq}"
         ]
 
         if self.request_type == self.SETUP:
