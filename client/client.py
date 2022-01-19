@@ -4,36 +4,50 @@ from ssl import SSL_ERROR_INVALID_ERROR_CODE
 from struct import pack
 import threading
 import time
-from typing import Dict
+
+from typing import Optional, List, Tuple
+from PIL import Image
+from io import BytesIO
 
 from utils.RTSP_packet import RTSPPacket
 from utils.RTP_packet import RTPPacket
 from utils.camera_stream import CameraStream
 
 class MediaClient():
-    IP = "127.0.0.0"
-    RTPport: int = None
+    RTSP_port: int = None
     mediaServer: socket.socket
     RTSP_STATUS = RTSPPacket.INVALID
+    RTSP_IP = None
     RTP_IP = None
     RTP_send_port = None
     RTP_recv_port = None
     RTSP_Thread = None
     sendThread = None
     recvThread = None
+    _frame_buffer = None
+    _current_frame_number = None
     Cseq: int = 1
     SERVER_BUFFER = 1024
     RTP_TIMEOUT = 5  # ms
     SERVER_TIMEOUT = 100  # ms
 
-    def __init__(self, port = 4000):
+    def __init__(self, ip = "127.0.0.1", port = 4000):
         self.mediaServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Use TCP as protocal
-        self.RTPport = port  # Port for RTP connection
+        self.RTSPport = port
+        self.RTSPIP = ip
+        self._frame_buffer: List[Image.Image] = []
+        self._current_frame_number = -1
+
+    def get_next_frame(self) -> Optional[Tuple[Image.Image, int]]:
+        if self._frame_buffer:
+            self._current_frame_number += 1
+            return self._frame_buffer.pop(0), self._current_frame_number
+        return None
     
     def start(self):
-        print(f'Media client starts at {self.IP}:{self.RTPport}')
+        print(f'Media client starts at {self.RTSP_IP}:{self.RTSP_port}')
         self.mediaServer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.mediaServer.connect((self.IP, self.RTPport))
+        self.mediaServer.connect((self.RTSP_IP, self.RTSP_port))
 
     def Send_SETUP_request(self):
         if self.RTSP_STATUS == RTSPPacket.INVALID:
@@ -82,26 +96,36 @@ class MediaClient():
                 if packet.request_type == RTSPPacket.TEARDOWN:
                     self.RTSP_STATUS = RTSPPacket.INVALID
                     self.RTP_send_port = None
+                    self.RTP_recv_port = None
                     self.RTP_IP = None
+                    self.RTSP_IP = None
                     self.Cseq += 1
 
     def RTP_recv(self, send_ip, RTP_recv_port):
         print("receiving thread started")
         ip = send_ip
         port = RTP_recv_port
-        send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
-        send_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        send_socket.connect((ip, port))
-        send_socket.settimeout(self.RTP_TIMEOUT / 1000.)
+        recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
+        recv_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        recv_socket.connect((ip, port))
+        recv_socket.settimeout(self.RTP_TIMEOUT / 1000.)
         while self.RTSP_STATUS != RTSPPacket.INVALID and self.RTSP_STATUS != RTSPPacket.TEARDOWN:
-            payload = {}
-            packet = RTPPacket(
-                RTPPacket.TYPE.IMG,
-                int(time.time()),
-                int(time.time()),
-                bytes(payload)
-            ).get_packet()
-            send_socket.sendto(packet, (ip, port))
+            recv = bytes()
+            while True:
+                try:
+                    data, addr = recv_socket.recvfrom(1024)
+                    if ip == addr[0] and port == addr[1]:
+                        recv += data
+                    else:
+                        break
+                    if recv.endswith(CameraStream.IMG_END):
+                        break
+                except socket.timeout:
+                    continue
+            payload = RTPPacket.from_packet(recv).get_payload()
+            frame = Image.open(BytesIO(payload))
+            self._frame_buffer.append(frame)
+            time.sleep(self.SERVER_TIMEOUT / 1000.)
 
     def RTP_send(self, send_ip, RTP_send_port):
         print("sending thread started")
