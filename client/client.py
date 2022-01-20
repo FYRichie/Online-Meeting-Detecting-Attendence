@@ -25,6 +25,7 @@ class MediaClient():
     sendThread = None
     recvThread = None
     _frame_buffer = None
+    _frame_buffer_send = None #new
     _current_frame_number = None
     Cseq: int = 1
     SERVER_BUFFER = 1024
@@ -36,6 +37,7 @@ class MediaClient():
         self.RTSP_port = port
         self.RTSP_IP = ip
         self._frame_buffer: List[Image.Image] = []
+        self._frame_buffer_send: List[Image.Image] = [] #new
         self._current_frame_number = -1
 
     def get_next_frame(self) -> Optional[Tuple[Image.Image, int]]:
@@ -186,32 +188,35 @@ class MediaClient():
         # send_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # send_socket.connect((ip, port))
         send_socket.settimeout(self.RTP_TIMEOUT / 1000.)
-        frame, width, height, _, _ = CameraStream().get_next_frame()
+        # frame, width, height, _, _ = CameraStream().get_next_frame()
+        if self._frame_buffer_send:
+            frame = self._frame_buffer_send.pop(0)
+    
 
-        print("Client sending to: %s:%d" % (ip, port))
+            print("Client sending to: %s:%d" % (ip, port))
 
-        while self.RTSP_STATUS == RTSPPacket.PLAY:
-            frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
-            _, display = cv2.imencode('.jpg', frame)
-            print(len(display), type(display))
-            payload = {
-                "current_display": display.tolist(),
-                "width": width,
-                "height": height
-            }
-            packet = RTPPacket(
-                RTPPacket.TYPE.IMG,
-                0,
-                0,
-                (json.dumps(payload) + CameraStream.IMG_END).encode()
-            ).get_packet()
-            # print("Packet length: ", len(packet))
-            to_send = packet[:]
-            while to_send:
-                try:
-                    send_socket.sendto(to_send[: self.SERVER_BUFFER], (ip, port))
-                except socket.error as e:
-                    print(f"failed to send rtp packet: {e}")
-                    return
-                to_send = to_send[self.SERVER_BUFFER :]
-            time.sleep(2 * self.SERVER_TIMEOUT / 1000.)
+            while self.RTSP_STATUS == RTSPPacket.PLAY:
+                frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
+                _, display = cv2.imencode('.jpg', frame)
+                print(len(display), type(display))
+                payload = {
+                    "current_display": display.tolist()
+                    # "width": width,
+                    # "height": height
+                }
+                packet = RTPPacket(
+                    RTPPacket.TYPE.IMG,
+                    0,
+                    0,
+                    (json.dumps(payload) + CameraStream.IMG_END).encode()
+                ).get_packet()
+                # print("Packet length: ", len(packet))
+                to_send = packet[:]
+                while to_send:
+                    try:
+                        send_socket.sendto(to_send[: self.SERVER_BUFFER], (ip, port))
+                    except socket.error as e:
+                        print(f"failed to send rtp packet: {e}")
+                        return
+                    to_send = to_send[self.SERVER_BUFFER :]
+                time.sleep(2 * self.SERVER_TIMEOUT / 1000.)

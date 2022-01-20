@@ -5,6 +5,8 @@ from PyQt5.QtCore import pyqtSignal, QTimer, Qt
 from PIL.ImageQt import ImageQt
 import cv2
 
+from utils.RTSP_packet import RTSPPacket
+
 from client import MediaClient as Client
 from utils.camera_stream import CameraStream
 
@@ -20,7 +22,7 @@ class ClientWindow(QMainWindow):
         super(ClientWindow, self).__init__(parent)
         self.video_player = QLabel()
         self.video_player2 = QLabel()
-        # self.camera = CameraStream()
+        self.camera = CameraStream()
 
         self.video_player2.setAlignment(Qt.AlignBottom)
         self.setup_button = QPushButton()
@@ -93,22 +95,21 @@ class ClientWindow(QMainWindow):
         central_widget.setLayout(layout)
 
     def update_image(self):
-        # print(len(self._media_client._frame_buffer))
-        # frame_c, width_c, height_c, fps, _ = self.camera.get_next_frame()
-        # width_c = int(width_c)
-        # height_c = int(height_c)
-        # # print(width_c)
-        # # print(height_c)
-        # frame_real = self.processcv2(frame_c, width_c, height_c)
-        # if frame_real is not None:
-        #     img = QImage(frame_real.data.tobytes(), width_c, height_c, QImage.Format_RGB888)
-        #     pix_c = QPixmap.fromImage(img)
-        #     self.video_player.setPixmap(pix_c)
+        frame_c, width_c, height_c, fps, _ = self.camera.get_next_frame()
+        if self._media_client.RTSP_STATUS == RTSPPacket.PLAY:
+            self._media_client._frame_buffer_send.append(frame_c)
+        width_c = int(width_c)
+        height_c = int(height_c)
+        # print(width_c)
+        # print(height_c)
+        frame_real = self.processcv2(frame_c, width_c, height_c)
+        if frame_real is not None:
+            img = QImage(frame_real.data.tobytes(), width_c, height_c, QImage.Format_RGB888)
+            pix_c = QPixmap.fromImage(img)
+            self.video_player.setPixmap(pix_c)
 
 
-        # if not self._media_client.is_receiving_rtp:
-        #     print(len(self._media_client._frame_buffer))
-        #     return
+       
         # print(len(self._media_client._frame_buffer))
         frame = self._media_client.get_next_frame()
         if frame is not None:
