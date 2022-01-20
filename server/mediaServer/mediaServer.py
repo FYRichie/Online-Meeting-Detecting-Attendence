@@ -172,31 +172,26 @@ class MediaServer():
 
         while True:
             if users[user_url].RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
-                payload = {}
                 for user in users:
                     if user != user_url and users[user].RTSP_STATUS in [RTSPPacket.PLAY]:
-                        _, display = cv2.imencode('.jpg', users[user_url].current_display)
-                        payload[user] = [
-                            users[user_url].name,  # "name"
-                            display.tolist(),      # "current_display"
-                            users[user_url].width, # "width"
-                            users[user_url].height #"height"
-                        ]
-                packet = RTPPacket(
-                    RTPPacket.TYPE.IMG,
-                    0,
-                    0,
-                    (json.dumps(payload) + CameraStream.IMG_END).encode()
-                ).get_packet()
+                        frame = cv2.imencode('.jpg', users[user_url].current_display)[1]
+                        data_frame = np.array(frame)
+                        str_frame = data_frame.tostring()
+
+                        packet = RTPPacket(
+                            RTPPacket.TYPE.IMG,
+                            0,
+                            0,
+                            str_frame
+                        ).get_packet()
                 
-                to_send = packet[:]
-                while to_send:
-                    try:
-                        send_socket.sendto(to_send[: self.CLIENT_BUFFER], (user_ip, user_port))
-                    except socket.error as e:
-                        print(f"failed to send rtp packet: {e}")
-                        return
-                    to_send = to_send[self.CLIENT_BUFFER :]
-                # send_socket.sendto(packet, (user_ip, user_port))
+                        to_send = packet[:]
+                        while to_send:
+                            try:
+                                send_socket.sendto(to_send[: self.CLIENT_BUFFER], (user_ip, user_port))
+                            except socket.error as e:
+                                print(f"failed to send rtp packet: {e}")
+                                return
+                            to_send = to_send[self.CLIENT_BUFFER :]
             time.sleep(self.SERVER_TIMEOUT / 1000.)
         
