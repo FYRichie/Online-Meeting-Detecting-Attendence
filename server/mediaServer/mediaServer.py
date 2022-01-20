@@ -45,6 +45,8 @@ class MediaServer():
         client = self.users[user_url].client
         while True:
             message = client.recv(self.CLIENT_BUFFER)
+            print("message")
+            print(message)
             packet = RTSPPacket.from_bytes(message)
 
             if packet.request_type == RTSPPacket.SETUP:
@@ -106,7 +108,9 @@ class MediaServer():
                         ip=self.IP,
                         session="none"
                     ).to_bytes()
+                    print("create package successfully")
                     client.send(res)
+                    print("res",res)
                     self.users[user_url].RTP_recv_thread.terminate()
                     self.users[user_url].RTP_send_thread.terminate()
 
