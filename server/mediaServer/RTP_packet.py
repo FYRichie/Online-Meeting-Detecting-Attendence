@@ -13,6 +13,7 @@ class RTPPacket:
         BOTH = 2
         NONE = 3
 
+
     def __init__(
         self,
         payload_type: int = None,
