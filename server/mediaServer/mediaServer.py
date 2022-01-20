@@ -6,8 +6,9 @@ from typing import Dict
 from .user import User
 from .RTSP_packet import RTSPPacket
 from .RTP_packet import RTPPacket
-from .camera_stream import CameraStream
+import re
 
+from .camera_stream import CameraStream
 
 class MediaServer():
     IP = "127.0.0.1"
@@ -45,6 +46,15 @@ class MediaServer():
         client = self.users[user_url].client
         while True:
             message = client.recv(self.CLIENT_BUFFER)
+            if re.match(
+                r"(?P<request_type>\w+) rtsp://(?P<ip>\S+) (?P<rtsp_version>RTSP/\d+.\d+)\r?\n"
+                r"CSeq: (?P<cseq>\d+)\r?\n"
+                r"(Transport: .*client_port=(?P<dst_port>\d+).*\r?\n)?"  # in case of SETUP request
+                r"(Session: (?P<session>\d+)\r?\n)?"
+                r"(a=name: (?P<name>)\r?\n)?",
+                message.decode()
+            ) == None:
+                continue
             packet = RTSPPacket.from_bytes(message)
 
             if packet.request_type == RTSPPacket.SETUP:
