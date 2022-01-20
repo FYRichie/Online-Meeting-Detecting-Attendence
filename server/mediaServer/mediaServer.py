@@ -71,6 +71,7 @@ class MediaServer():
                     users[user_url].name = packet.name
                     users[user_url].RTP_recv_port = last_port + 1
                     users[user_url].RTP_send_port = last_port + 2
+                    users[user_url].current_display = np.zeros((640, 480, 3))
                     users[user_url].RTP_recv_thread = Thread(target=self.RTP_recv, args=(user_url, users))
                     users[user_url].RTP_send_thread = Thread(target=self.RTP_send, args=(user_url, users))
                     users[user_url].RTP_recv_thread.setDaemon(True)
@@ -151,9 +152,9 @@ class MediaServer():
                             break
                     except socket.timeout:
                         continue
+                recv = recv[: -len(CameraStream.IMG_END)]
                 payload = RTPPacket.from_packet(recv).get_payload()
                 frame = base64.decodebytes(payload)
-                print(type(frame))
 
                 users[user_url].current_display = frame
             time.sleep(self.SERVER_TIMEOUT / 1000.)
@@ -174,6 +175,7 @@ class MediaServer():
             if users[user_url].RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
                 for user in users:
                     if user != user_url and users[user].RTSP_STATUS in [RTSPPacket.PLAY]:
+                        print(users[user_url].current_display)
                         frame = cv2.imencode('.jpg', users[user_url].current_display)[1]
                         data_frame = np.array(frame)
                         str_frame = data_frame.tostring()

@@ -184,28 +184,27 @@ class MediaClient():
         port = RTP_send_port
         send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
         send_socket.settimeout(self.RTP_TIMEOUT / 1000.)
-        # frame, _, _, _, _ = CameraStream().get_next_frame()
-        if self._frame_buffer_send:
-            frame = self._frame_buffer_send.pop(0)
+        frame, _, _, _, _ = CameraStream().get_next_frame()
 
-            while self.RTSP_STATUS == RTSPPacket.PLAY:
-                frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
-                frame = cv2.imencode(".jpg", frame)[1]
-                data_frame = np.array(frame)
-                str_frame = data_frame.tostring()
+        while self.RTSP_STATUS == RTSPPacket.PLAY:
+            frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
+            frame = cv2.imencode(".jpg", frame)[1]
+            data_frame = np.array(frame)
+            str_frame = data_frame.tostring()
 
-                packet = RTPPacket(
-                    RTPPacket.TYPE.IMG,
-                    0,
-                    0,
-                    str_frame
-                ).get_packet()
-                to_send = packet[:]
-                while to_send:
-                    try:
-                        send_socket.sendto(to_send[: self.SERVER_BUFFER], (ip, port))
-                    except socket.error as e:
-                        print(f"failed to send rtp packet: {e}")
-                        return
-                    to_send = to_send[self.SERVER_BUFFER :]
-                time.sleep(2 * self.SERVER_TIMEOUT / 1000.)
+            packet = RTPPacket(
+                RTPPacket.TYPE.IMG,
+                0,
+                0,
+                str_frame
+            ).get_packet()
+            print(len(packet))
+            to_send = packet[:]
+            while to_send:
+                try:
+                    send_socket.sendto(to_send[: self.SERVER_BUFFER], (ip, port))
+                except socket.error as e:
+                    print(f"failed to send rtp packet: {e}")
+                    return
+                to_send = to_send[self.SERVER_BUFFER :]
+            time.sleep(2 * self.SERVER_TIMEOUT / 1000.)
