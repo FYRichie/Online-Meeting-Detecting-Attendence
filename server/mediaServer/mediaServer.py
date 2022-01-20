@@ -175,7 +175,6 @@ class MediaServer():
             if users[user_url].RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
                 for user in users:
                     if user != user_url and users[user].RTSP_STATUS in [RTSPPacket.PLAY]:
-                        print(users[user_url].current_display)
                         frame = cv2.imencode('.jpg', users[user_url].current_display)[1]
                         data_frame = np.array(frame)
                         str_frame = data_frame.tostring()

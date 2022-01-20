@@ -184,13 +184,15 @@ class MediaClient():
         port = RTP_send_port
         send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
         send_socket.settimeout(self.RTP_TIMEOUT / 1000.)
-        frame, _, _, _, _ = CameraStream().get_next_frame()
+        # frame, _, _, _, _ = CameraStream().get_next_frame()
+        if self._frame_buffer_send:
+            frame = self._frame_buffer_send.pop(0)
 
-        while self.RTSP_STATUS == RTSPPacket.PLAY:
-            frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
-            frame = cv2.imencode(".jpg", frame)[1]
-            data_frame = np.array(frame)
-            str_frame = data_frame.tostring()
+            while self.RTSP_STATUS == RTSPPacket.PLAY:
+                frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
+                frame = cv2.imencode(".jpg", frame)[1]
+                data_frame = np.array(frame)
+                str_frame = data_frame.tostring()
 
             packet = RTPPacket(
                 RTPPacket.TYPE.IMG,
