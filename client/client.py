@@ -59,6 +59,8 @@ class MediaClient():
                             name = "",
                             ip = self.RTSP_IP
                             ).to_bytes()
+            print("req:",req)
+            print("status",self.RTSP_STATUS)
             self.mediaServer.send(req)
             print("RTSP packet send successfully")
             while self.RTSP_STATUS != RTSPPacket.SETUP:
@@ -83,6 +85,8 @@ class MediaClient():
                             name = "",
                             ip = self.RTSP_IP
                             ).to_bytes()
+            print("req:",req)
+            print("status",self.RTSP_STATUS)
             self.mediaServer.send(req)
             while self.RTSP_STATUS != RTSPPacket.PLAY:
                 message = self.mediaServer.recv(self.SERVER_BUFFER)
@@ -103,6 +107,8 @@ class MediaClient():
                             name = "",
                             ip = self.RTSP_IP
                             ).to_bytes()
+            print("req:",req)
+            print("status",self.RTSP_STATUS)
             self.mediaServer.send(req)
             while self.RTSP_STATUS != RTSPPacket.PAUSE:
                 message = self.mediaServer.recv(self.SERVER_BUFFER)
@@ -121,6 +127,8 @@ class MediaClient():
                             name = "",
                             ip = self.RTSP_IP
                             ).to_bytes()
+            print("req:",req)
+            print("status",self.RTSP_STATUS)
             self.mediaServer.send(req)
             while self.RTSP_STATUS != RTSPPacket.TEARDOWN:
                 message = self.mediaServer.recv(self.SERVER_BUFFER)
