@@ -1,7 +1,7 @@
 import cv2
 
 class CameraStream():
-    IMG_END = "IMG_END"
+    IMG_END = b'\xff\xd9'
 
     def __init__(self):
         self.cap = cv2.VideoCapture(0)

@@ -5,9 +5,11 @@ from turtle import width
 import json
 import cv2
 import numpy as np
+import base64
 
 from typing import Optional, List, Tuple
 from PIL import Image
+from io import StringIO
 
 from utils.RTSP_packet import RTSPPacket
 from utils.RTP_packet import RTPPacket
@@ -174,7 +176,7 @@ class MediaClient():
                     continue
             # recv = recv_socket.recv(self.SERVER_BUFFER)
             payload = RTPPacket.from_packet(recv).get_payload()
-            frame = cv2.imdecode(np.asarray(payload["current_display"]), cv2.IMREAD_COLOR)
+            frame = cv2.imdecode(np.array(payload["current_display"]), cv2.IMREAD_COLOR)
             self._frame_buffer.append(frame)
             time.sleep(self.SERVER_TIMEOUT / 1000.)
 
@@ -183,29 +185,23 @@ class MediaClient():
         ip = send_ip
         port = RTP_send_port
         send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
-        # send_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # send_socket.connect((ip, port))
         send_socket.settimeout(self.RTP_TIMEOUT / 1000.)
-        frame, width, height, _, _ = CameraStream().get_next_frame()
+        frame, _, _, _, _ = CameraStream().get_next_frame()
 
         print("Client sending to: %s:%d" % (ip, port))
 
         while self.RTSP_STATUS == RTSPPacket.PLAY:
             frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
-            _, display = cv2.imencode('.jpg', frame)
-            print(len(display), type(display))
-            payload = {
-                "current_display": display.tolist(),
-                "width": width,
-                "height": height
-            }
+            frame = cv2.imencode(".jpg", frame)[1]
+            data_frame = np.array(frame)
+            str_frame = data_frame.tostring()
+
             packet = RTPPacket(
                 RTPPacket.TYPE.IMG,
                 0,
                 0,
-                (json.dumps(payload) + CameraStream.IMG_END).encode()
+                str_frame
             ).get_packet()
-            # print("Packet length: ", len(packet))
             to_send = packet[:]
             while to_send:
                 try:
