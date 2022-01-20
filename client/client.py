@@ -27,6 +27,7 @@ class MediaClient():
     sendThread = None
     recvThread = None
     _frame_buffer = None
+    _frame_buffer_send = None
     _current_frame_number = None
     Cseq: int = 1
     SERVER_BUFFER = 1024
@@ -38,6 +39,7 @@ class MediaClient():
         self.RTSP_port = port
         self.RTSP_IP = ip
         self._frame_buffer: List[Image.Image] = []
+        self._frame_buffer_send: List[Image.Image] =[]
         self._current_frame_number = -1
 
     def get_next_frame(self) -> Optional[Tuple[Image.Image, int]]:
@@ -187,8 +189,6 @@ class MediaClient():
         send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
         send_socket.settimeout(self.RTP_TIMEOUT / 1000.)
         frame, _, _, _, _ = CameraStream().get_next_frame()
-
-        print("Client sending to: %s:%d" % (ip, port))
 
         while self.RTSP_STATUS == RTSPPacket.PLAY:
             frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
