@@ -80,5 +80,5 @@ class RTPPacket:
             print(s, end=' ' if i not in (3, 7) else '\n')
 
     def get_payload(self):
-        return json.loads(self.payload.decode())
+        return self.payload
         # return self.payload.decode("utf-8")

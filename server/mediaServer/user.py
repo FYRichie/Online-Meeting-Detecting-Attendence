@@ -15,7 +15,8 @@ class User():
         RTP_recv_port: int = None,
         RTP_send_port: int = None,
         RTP_recv_thread: Thread = None,
-        RTP_send_thread: Thread = None
+        RTP_send_thread: Thread = None,
+        
     ):
         self.name = name
         self.current_display = current_display
