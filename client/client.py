@@ -1,7 +1,4 @@
-from re import S, T
 import socket
-from ssl import SSL_ERROR_INVALID_ERROR_CODE
-from struct import pack
 import threading
 import time
 
