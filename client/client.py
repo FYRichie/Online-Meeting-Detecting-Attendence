@@ -126,12 +126,13 @@ class MediaClient():
                 message = self.mediaServer.recv(self.SERVER_BUFFER)
                 packet = RTSPPacket.from_bytes(message)
                 if packet.request_type == RTSPPacket.TEARDOWN:
-                    self.RTSP_STATUS = RTSPPacket.INVALID
+                    self.RTSP_STATUS = RTSPPacket.TEARDOWN
                     self.RTP_send_port = None
                     self.RTP_recv_port = None
                     self.RTP_IP = None
                     self.RTSP_IP = None
                     self.Cseq += 1
+            self.RTSP_STATUS = RTSPPacket.INVALID
 
     def RTP_recv(self, send_ip, RTP_recv_port):
         print("receiving thread started")
