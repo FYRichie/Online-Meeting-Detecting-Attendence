@@ -159,7 +159,7 @@ class ClientWindow(QMainWindow):
         self.setup_button.setEnabled(True)
         self.play_button.setEnabled(False)
         self.pause_button.setEnabled(False)
-        # exit(0)
+        self.tear_button.setEnabled(False)
 
     def handle_error(self):
         self.play_button.setEnabled(False)

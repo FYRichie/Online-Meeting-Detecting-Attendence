@@ -118,7 +118,7 @@ class MediaClient():
                     self.Cseq += 1
 
     def Send_TEARDOWN_request(self):
-        if self.RTSP_STATUS != RTSPPacket.TEARDOWN:
+        if self.RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
             req = RTSPPacket(
                             request_type = RTSPPacket.TEARDOWN,
                             cseq = self.Cseq,
