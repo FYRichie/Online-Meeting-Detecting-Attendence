@@ -1,8 +1,11 @@
+import base64
+from io import StringIO
 import socket
 from multiprocessing import Process
 from threading import Thread
 # from threading import Thread
 import time
+from tkinter import Frame
 from typing import Dict
 import json
 import numpy as np
@@ -123,8 +126,6 @@ class MediaServer():
                         session="none"
                     ).to_bytes()
                     client.send(res)
-                    # users[user_url].RTP_recv_thread.terminate()
-                    # users[user_url].RTP_send_thread.terminate()
 
     def RTP_recv(self, user_url: str, users: Dict[str, User]):
         print("%s recv thread started" % user_url)
@@ -136,9 +137,6 @@ class MediaServer():
         recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
         recv_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         recv_socket.bind((ip, port))
-        # recv_socket.settimeout(self.RTP_TIMEOUT / 1000.)
-
-        print("Server recv url: %s:%d" % (ip, port))
 
         while True:
             print("RECV status: ", users[user_url].RTSP_STATUS)
@@ -148,15 +146,16 @@ class MediaServer():
                     try:
                         data = recv_socket.recv(self.CLIENT_BUFFER)
                         recv += data
-                        if recv.endswith(CameraStream.IMG_END.encode()):
+                        if recv.endswith(CameraStream.IMG_END):
                             print("end of image")
                             break
                     except socket.timeout:
                         continue
                 payload = RTPPacket.from_packet(recv).get_payload()
-                users[user_url].current_display = cv2.imdecode(np.asarray(payload["current_display"]), cv2.IMREAD_COLOR)
-                users[user_url].width = payload["width"]
-                users[user_url].height = payload["height"]
+                frame = base64.decodebytes(payload)
+                print(type(frame))
+
+                users[user_url].current_display = frame
             time.sleep(self.SERVER_TIMEOUT / 1000.)
 
     def RTP_send(self, user_url: str, users: Dict[str, User]):
@@ -177,12 +176,12 @@ class MediaServer():
                 for user in users:
                     if user != user_url and users[user].RTSP_STATUS in [RTSPPacket.PLAY]:
                         _, display = cv2.imencode('.jpg', users[user_url].current_display)
-                        payload[user] = {
-                            "name": users[user_url].name,
-                            "current_display": display.tolist(),
-                            "width": users[user_url].width,
-                            "height": users[user_url].height
-                        }
+                        payload[user] = [
+                            users[user_url].name,  # "name"
+                            display.tolist(),      # "current_display"
+                            users[user_url].width, # "width"
+                            users[user_url].height #"height"
+                        ]
                 packet = RTPPacket(
                     RTPPacket.TYPE.IMG,
                     0,
