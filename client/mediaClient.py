@@ -47,7 +47,7 @@ class ClientWindow(QMainWindow):
         self.setup_button.setEnabled(True)
         self.setup_button.setText('Setup')
         self.setup_button.clicked.connect(self.handle_setup)
-        self.setup_button.setGeometry(0,0,200,100)
+        # self.setup_button.setGeometry(0,0,200,100)
     
         self.resize_button.setEnabled(True)
         self.resize_button.setText('test')
@@ -109,7 +109,7 @@ class ClientWindow(QMainWindow):
         # if not self._media_client.is_receiving_rtp:
         #     print(len(self._media_client._frame_buffer))
         #     return
-        print(len(self._media_client._frame_buffer))
+        # print(len(self._media_client._frame_buffer))
         frame = self._media_client.get_next_frame()
         if frame is not None:
             pix = QPixmap.fromImage(ImageQt(frame[0]).copy())
@@ -159,7 +159,7 @@ class ClientWindow(QMainWindow):
         self.setup_button.setEnabled(True)
         self.play_button.setEnabled(False)
         self.pause_button.setEnabled(False)
-        exit(0)
+        self.tear_button.setEnabled(False)
 
     def handle_error(self):
         self.play_button.setEnabled(False)
