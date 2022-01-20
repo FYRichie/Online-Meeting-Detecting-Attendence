@@ -1,3 +1,5 @@
+import json
+
 class RTPPacket:
     HEADER_SIZE = 12
     VERSION = 0b10
@@ -76,4 +78,4 @@ class RTPPacket:
             print(s, end=' ' if i not in (3, 7) else '\n')
 
     def get_payload(self):
-        return self.payload.decode("utf-8")
+        return json.loads(self.payload.decode("utf-8"))

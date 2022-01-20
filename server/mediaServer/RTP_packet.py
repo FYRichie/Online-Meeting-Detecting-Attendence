@@ -1,3 +1,7 @@
+import json
+
+from .camera_stream import CameraStream
+
 class RTPPacket:
     HEADER_SIZE = 12
     VERSION = 0b10
@@ -52,7 +56,7 @@ class RTPPacket:
             raise Exception("Packet length is shorter than RTP header size.")
 
         header = packet[: cls.HEADER_SIZE]
-        payload = packet[cls.HEADER_SIZE :]
+        payload = packet[cls.HEADER_SIZE : -len(CameraStream.IMG_END.encode())]
 
         payload_type = header[1] & 0x7F
         sequence_number = header[2] << 8 | header[3]
@@ -76,4 +80,5 @@ class RTPPacket:
             print(s, end=' ' if i not in (3, 7) else '\n')
 
     def get_payload(self):
-        return self.payload.decode("utf-8")
+        return json.loads(self.payload.decode())
+        # return self.payload.decode("utf-8")
