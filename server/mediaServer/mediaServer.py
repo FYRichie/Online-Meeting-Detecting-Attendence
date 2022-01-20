@@ -1,7 +1,12 @@
 import socket
 from multiprocessing import Process
+from threading import Thread
+# from threading import Thread
 import time
 from typing import Dict
+import json
+import numpy as np
+import cv2
 
 from .user import User
 from .RTSP_packet import RTSPPacket
@@ -10,10 +15,10 @@ from .camera_stream import CameraStream
 
 
 class MediaServer():
-    IP = "127.0.0.1"
+    IP = "192.168.98.43"
     PORT = 3000
     CLIENT_BUFFER = 1024
-    RTP_TIMEOUT = 5  # ms
+    RTP_TIMEOUT = 1000  # ms
     SERVER_TIMEOUT = 100  # ms
 
     def __init__(self, maximum_user: int = 2):
@@ -22,6 +27,7 @@ class MediaServer():
         self.users: Dict[str, User] = {}
         self.maximum_user = maximum_user
         self.testuser = User()
+        # self.last_port = 3000
 
     def start(self):
         print("Media server start at %s:%d" % (self.IP, self.PORT))
@@ -35,32 +41,41 @@ class MediaServer():
             if url not in self.users:
                 self.users[url] = User(
                     client=client,
-                    RTSP_thread=Process(target=self.RTSP_connection, args=(url, ))
-                    # RTSP_thread=threading.Thread(target=self.RTSP_connection, args=(url, ))
+                    RTSP_thread=Thread(target=self.RTSP_connection, args=(url, self.RTPport, self.users))
+                    # RTSP_thread=Thread(target=self.RTSP_connection, args=(url, ))
                 )
+                print(self.users.keys())
+                self.users[url].RTSP_thread.setDaemon(True)
                 self.users[url].RTSP_thread.start()
 
-    def RTSP_connection(self, user_url: str):
+    def RTSP_connection(self, user_url: str, RTPport: list, users: Dict[str, User]):
         print("%s RTSP thread started" % user_url)
-        client = self.users[user_url].client
+        client = users[user_url].client
         while True:
             message = client.recv(self.CLIENT_BUFFER)
+            print("message")
+            print(message)
             packet = RTSPPacket.from_bytes(message)
 
             if packet.request_type == RTSPPacket.SETUP:
-                if self.users[user_url].RTSP_STATUS == RTSPPacket.INVALID:
-                    self.users[user_url].RTSP_STATUS = RTSPPacket.SETUP
-                    last_port = self.PORT if len(self.RTPport) == 0 else self.RTPport[-1]
-                    self.RTPport.append(last_port + 1)
-                    self.RTPport.append(last_port + 2)
+                if users[user_url].RTSP_STATUS == RTSPPacket.INVALID:
+                    users[user_url].RTSP_STATUS = RTSPPacket.SETUP
+                    last_port = self.PORT if len(RTPport) == 0 else RTPport[-1]
+                    RTPport.append(last_port + 1)
+                    RTPport.append(last_port + 2)
+                    print(RTPport)
 
-                    self.users[user_url].name = packet.name
-                    self.users[user_url].RTP_recv_port = last_port + 1
-                    self.users[user_url].RTP_send_port = last_port + 2
-                    self.users[user_url].RTP_recv_thread = Process(target=self.RTP_recv, args=(user_url, ))
-                    self.users[user_url].RTP_send_thread = Process(target=self.RTP_send, args=(user_url, ))
-                    self.users[user_url].RTP_recv_thread.start()
-                    self.users[user_url].RTP_send_thread.start()
+                    users[user_url].name = packet.name
+                    users[user_url].RTP_recv_port = last_port + 1
+                    users[user_url].RTP_send_port = last_port + 2
+                    users[user_url].RTP_recv_thread = Thread(target=self.RTP_recv, args=(user_url, users))
+                    users[user_url].RTP_send_thread = Thread(target=self.RTP_send, args=(user_url, users))
+                    users[user_url].RTP_recv_thread.setDaemon(True)
+                    users[user_url].RTP_send_thread.setDaemon(True)
+                    users[user_url].RTP_recv_thread.start()
+                    users[user_url].RTP_send_thread.start()
+
+                    print("%s with send port %d, recv port %d" % (user_url, last_port + 2, last_port + 1))
                     
                     res = RTSPPacket(
                         request_type=packet.request_type,
@@ -74,12 +89,13 @@ class MediaServer():
                     print(
                         "User %s is setup already, using %d as recv port, %d as send port" % (
                             user_url,
-                            self.users[user_url].RTP_recv_port,
-                            self.users[user_url].RTP_send_port
+                            users[user_url].RTP_recv_port,
+                            users[user_url].RTP_send_port
                     ))
             elif packet.request_type == RTSPPacket.PLAY:
-                if self.users[user_url].RTSP_STATUS not in [RTSPPacket.INVALID, RTSPPacket.TEARDOWN]:
-                    self.users[user_url].RTSP_STATUS = RTSPPacket.PLAY
+                if users[user_url].RTSP_STATUS not in [RTSPPacket.INVALID, RTSPPacket.TEARDOWN]:
+                    print("Sending playing response")
+                    users[user_url].RTSP_STATUS = RTSPPacket.PLAY
                     res = RTSPPacket(
                         request_type=packet.request_type,
                         cseq=packet.cseq,
@@ -88,8 +104,8 @@ class MediaServer():
                     ).to_bytes()
                     client.send(res)
             elif packet.request_type == RTSPPacket.PAUSE:
-                if self.users[user_url].RTSP_STATUS == RTSPPacket.PLAY:
-                    self.users[user_url].RTSP_STATUS = RTSPPacket.PAUSE
+                if users[user_url].RTSP_STATUS == RTSPPacket.PLAY:
+                    users[user_url].RTSP_STATUS = RTSPPacket.PAUSE
                     res = RTSPPacket(
                         request_type=packet.request_type,
                         cseq=packet.cseq,
@@ -98,8 +114,8 @@ class MediaServer():
                     ).to_bytes()
                     client.send(res)
             elif packet.request_type == RTSPPacket.TEARDOWN:
-                if self.users[user_url].RTSP_STATUS != RTSPPacket.INVALID:
-                    self.users[user_url].RTSP_STATUS = RTSPPacket.INVALID
+                if users[user_url].RTSP_STATUS != RTSPPacket.INVALID:
+                    users[user_url].RTSP_STATUS = RTSPPacket.INVALID
                     res = RTSPPacket(
                         request_type=packet.request_type,
                         cseq=packet.cseq,
@@ -107,45 +123,48 @@ class MediaServer():
                         session="none"
                     ).to_bytes()
                     client.send(res)
-                    self.users[user_url].RTP_recv_thread.terminate()
-                    self.users[user_url].RTP_send_thread.terminate()
+                    # users[user_url].RTP_recv_thread.terminate()
+                    # users[user_url].RTP_send_thread.terminate()
 
-    def RTP_recv(self, user_url: str):
+    def RTP_recv(self, user_url: str, users: Dict[str, User]):
         print("%s recv thread started" % user_url)
         user_addr = user_url.split(":")
         user_ip, user_port = user_addr[0], int(user_addr[1])
         ip = self.IP
-        port = self.users[user_url].RTP_recv_port
+        port = users[user_url].RTP_recv_port
         
         recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
         recv_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         recv_socket.bind((ip, port))
-        recv_socket.settimeout(self.RTP_TIMEOUT / 1000.)
+        # recv_socket.settimeout(self.RTP_TIMEOUT / 1000.)
+
+        print("Server recv url: %s:%d" % (ip, port))
 
         while True:
-            if self.users[user_url].RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
+            print("RECV status: ", users[user_url].RTSP_STATUS)
+            if users[user_url].RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
                 recv = bytes()
                 while True:
                     try:
-                        data, addr = recv_socket.recvfrom(1024)
-                        if user_ip == addr[0] and user_port == addr[1]:
-                            recv += data
-                        else:
-                            break
+                        data = recv_socket.recv(self.CLIENT_BUFFER)
+                        recv += data
                         if recv.endswith(CameraStream.IMG_END.encode()):
+                            print("end of image")
                             break
                     except socket.timeout:
                         continue
                 payload = RTPPacket.from_packet(recv).get_payload()
-                self.users[user_url].current_display = payload["img"]
+                users[user_url].current_display = cv2.imdecode(np.asarray(payload["current_display"]), cv2.IMREAD_COLOR)
+                users[user_url].width = payload["width"]
+                users[user_url].height = payload["height"]
             time.sleep(self.SERVER_TIMEOUT / 1000.)
 
-    def RTP_send(self, user_url: str):
+    def RTP_send(self, user_url: str, users: Dict[str, User]):
         print("%s send thread started" % user_url)
         user_addr = user_url.split(":")
         user_ip, user_port = user_addr[0], int(user_addr[1])
         ip = self.IP
-        port = self.users[user_url].RTP_send_port
+        port = users[user_url].RTP_send_port
 
         send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
         send_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -153,20 +172,32 @@ class MediaServer():
         send_socket.settimeout(self.RTP_TIMEOUT / 1000.)
 
         while True:
-            if self.users[user_url].RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
+            if users[user_url].RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
                 payload = {}
-                for user in self.users:
-                    if user != user_url and self.users[user].RTSP_STATUS in [RTSPPacket.PLAY]:
+                for user in users:
+                    if user != user_url and users[user].RTSP_STATUS in [RTSPPacket.PLAY]:
+                        _, display = cv2.imencode('.jpg', users[user_url].current_display)
                         payload[user] = {
-                            "name": self.users[user_url].name,
-                            "current_display": self.users[user].current_display
+                            "name": users[user_url].name,
+                            "current_display": display.tolist(),
+                            "width": users[user_url].width,
+                            "height": users[user_url].height
                         }
                 packet = RTPPacket(
                     RTPPacket.TYPE.IMG,
                     0,
                     0,
-                    (str(payload) + CameraStream.IMG_END).encode()
+                    (json.dumps(payload) + CameraStream.IMG_END).encode()
                 ).get_packet()
-                send_socket.sendto(packet, (user_ip, user_port))
+                
+                to_send = packet[:]
+                while to_send:
+                    try:
+                        send_socket.sendto(to_send[: self.CLIENT_BUFFER], (user_ip, user_port))
+                    except socket.error as e:
+                        print(f"failed to send rtp packet: {e}")
+                        return
+                    to_send = to_send[self.CLIENT_BUFFER :]
+                # send_socket.sendto(packet, (user_ip, user_port))
             time.sleep(self.SERVER_TIMEOUT / 1000.)
         
