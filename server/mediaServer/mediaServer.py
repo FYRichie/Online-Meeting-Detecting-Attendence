@@ -217,4 +217,4 @@ class MediaServer():
         print("Write an image")
         img = img.reshape((480, 640, 3))
         out_file.write(img)
-        cv2.imshow("test", img)
+        # cv2.imshow("test", img)
