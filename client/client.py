@@ -28,8 +28,8 @@ class MediaClient():
     _current_frame_number = None
     Cseq: int = 1
     SERVER_BUFFER = 1024
-    RTP_TIMEOUT = 1000  # ms
-    SERVER_TIMEOUT = 1000  # ms
+    RTP_TIMEOUT = 200  # ms
+    SERVER_TIMEOUT = 200  # ms
 
     def __init__(self, ip = "127.0.0.1", port = 4000, filename: str = "example.mp4"):
         self.mediaServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Use TCP as protocal

@@ -19,8 +19,8 @@ class MediaServer():
     IP = "127.0.0.1"
     PORT = 3000
     CLIENT_BUFFER = 1024
-    RTP_TIMEOUT = 500  # ms
-    SERVER_TIMEOUT = 500  # ms
+    RTP_TIMEOUT = 200  # ms
+    SERVER_TIMEOUT = 200  # ms
 
     def __init__(self, maximum_user: int = 2):
         self.RTSPsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Use TCP as protocal
