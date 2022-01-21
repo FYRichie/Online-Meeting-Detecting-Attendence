@@ -4,6 +4,7 @@ from mediaClient import ClientWindow
 
 if __name__ == "__main__":
     import sys
+    filename = "example.mp4"
     if len(sys.argv) == 2:
         filename = sys.argv[1]
     app = QApplication([])

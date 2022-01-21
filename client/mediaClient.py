@@ -55,7 +55,7 @@ class ClientWindow(QMainWindow):
         self.resize_button.clicked.connect(self.handle_resize)
 
         self.play_button.setEnabled(False)
-        self.play_button.setText('Play')
+        self.play_button.setText('Send')
         self.play_button.clicked.connect(self.handle_play)
 
         self.pause_button.setEnabled(False)
@@ -81,7 +81,7 @@ class ClientWindow(QMainWindow):
         control_layout.addWidget(self.play_button)
         control_layout.addWidget(self.pause_button)
         control_layout.addWidget(self.tear_button)
-        control_layout.addWidget(self.resize_button)
+        # control_layout.addWidget(self.resize_button)
         
         
         layout = QHBoxLayout()
