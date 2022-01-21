@@ -2,6 +2,7 @@ import base64
 from io import StringIO
 import socket
 from multiprocessing import Process
+from this import d
 from threading import Thread
 # from threading import Thread
 import time
@@ -18,11 +19,11 @@ from .camera_stream import CameraStream
 
 
 class MediaServer():
-    IP = "192.168.98.43"
+    IP = "127.0.0.1"
     PORT = 3000
     CLIENT_BUFFER = 1024
-    RTP_TIMEOUT = 1000  # ms
-    SERVER_TIMEOUT = 100  # ms
+    RTP_TIMEOUT = 500  # ms
+    SERVER_TIMEOUT = 500  # ms
 
     def __init__(self, maximum_user: int = 2):
         self.RTSPsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Use TCP as protocal
@@ -68,7 +69,7 @@ class MediaServer():
                     RTPport.append(last_port + 2)
                     print(RTPport)
 
-                    users[user_url].name = packet.name
+                    users[user_url].name = packet.ip
                     users[user_url].RTP_recv_port = last_port + 1
                     users[user_url].RTP_send_port = last_port + 2
                     users[user_url].current_display = np.zeros((640, 480, 3))
@@ -139,6 +140,10 @@ class MediaServer():
         recv_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         recv_socket.bind((ip, port))
 
+        fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+        out = cv2.VideoWriter(users[user_url].name, fourcc, 5, (640, 480))
+
+
         while True:
             print("RECV status: ", users[user_url].RTSP_STATUS)
             if users[user_url].RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
@@ -154,9 +159,13 @@ class MediaServer():
                         continue
                 recv = recv[: -len(CameraStream.IMG_END)]
                 payload = RTPPacket.from_packet(recv).get_payload()
-                frame = base64.decodebytes(payload)
-
-                users[user_url].current_display = frame
+                img = np.fromstring(payload, dtype=np.uint8)
+                print(img.shape)
+                self.write_np(img, out)
+                
+                # users[user_url].current_display = cv2.imdecode(np.asarray(payload["current_display"]), cv2.IMREAD_COLOR)
+                # users[user_url].width = payload["width"]
+                # users[user_url].height = payload["height"]
             time.sleep(self.SERVER_TIMEOUT / 1000.)
 
     def RTP_send(self, user_url: str, users: Dict[str, User]):
@@ -196,3 +205,10 @@ class MediaServer():
                             to_send = to_send[self.CLIENT_BUFFER :]
             time.sleep(self.SERVER_TIMEOUT / 1000.)
         
+    def write_np(self, img: np.ndarray, out_file: cv2.VideoWriter):
+        if img.shape[0] != 480 * 640 * 3:
+            return
+        print("Write an image")
+        img = img.reshape((480, 640, 3))
+        out_file.write(img)
+        # cv2.imshow("test", img)

@@ -31,16 +31,17 @@ class MediaClient():
     _current_frame_number = None
     Cseq: int = 1
     SERVER_BUFFER = 1024
-    RTP_TIMEOUT = 100  # ms
-    SERVER_TIMEOUT = 100  # ms
+    RTP_TIMEOUT = 1000  # ms
+    SERVER_TIMEOUT = 1000  # ms
 
-    def __init__(self, ip = "127.0.0.1", port = 4000):
+    def __init__(self, ip = "127.0.0.1", port = 4000, filename: str = "example.mp4"):
         self.mediaServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Use TCP as protocal
         self.RTSP_port = port
         self.RTSP_IP = ip
         self._frame_buffer: List[Image.Image] = []
         self._frame_buffer_send: List[Image.Image] =[]
         self._current_frame_number = -1
+        self.filename = filename
 
     def get_next_frame(self) -> Optional[Tuple[Image.Image, int]]:
         if self._frame_buffer:
@@ -61,7 +62,7 @@ class MediaClient():
                             session = 0,
                             dst_port = self.RTSP_port,
                             name = "",
-                            ip = self.RTSP_IP
+                            ip = self.filename
                             ).to_bytes()
             print("req:",req)
             print("status",self.RTSP_STATUS)
@@ -184,9 +185,6 @@ class MediaClient():
         port = RTP_send_port
         send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
         send_socket.settimeout(self.RTP_TIMEOUT / 1000.)
-        # frame, _, _, _, _ = CameraStream().get_next_frame()
-        if self._frame_buffer_send:
-            frame = self._frame_buffer_send.pop(0)
 
             while self.RTSP_STATUS == RTSPPacket.PLAY:
                 frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
@@ -194,13 +192,18 @@ class MediaClient():
                 data_frame = np.array(frame)
                 str_frame = data_frame.tostring()
 
+        while self.RTSP_STATUS == RTSPPacket.PLAY:
+            frame, width, height, _, _ = CameraStream().get_next_frame()
+            frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
+
             packet = RTPPacket(
                 RTPPacket.TYPE.IMG,
                 0,
                 0,
-                str_frame
+                frame.tostring() + CameraStream.IMG_END.encode()
             ).get_packet()
-            print(len(packet))
+            print("Packet length: ", len(packet))
+            
             to_send = packet[:]
             while to_send:
                 try:
@@ -209,4 +212,4 @@ class MediaClient():
                     print(f"failed to send rtp packet: {e}")
                     return
                 to_send = to_send[self.SERVER_BUFFER :]
-            time.sleep(2 * self.SERVER_TIMEOUT / 1000.)
+            time.sleep(self.SERVER_TIMEOUT / 1000.)
