@@ -5,9 +5,11 @@ from turtle import width
 import json
 import cv2
 import numpy as np
+import base64
 
 from typing import Optional, List, Tuple
 from PIL import Image
+from io import StringIO
 
 from utils.RTSP_packet import RTSPPacket
 from utils.RTP_packet import RTPPacket
@@ -25,6 +27,7 @@ class MediaClient():
     sendThread = None
     recvThread = None
     _frame_buffer = None
+    _frame_buffer_send = None
     _current_frame_number = None
     Cseq: int = 1
     SERVER_BUFFER = 1024
@@ -36,6 +39,7 @@ class MediaClient():
         self.RTSP_port = port
         self.RTSP_IP = ip
         self._frame_buffer: List[Image.Image] = []
+        self._frame_buffer_send: List[Image.Image] =[]
         self._current_frame_number = -1
         self.filename = filename
 
@@ -157,25 +161,21 @@ class MediaClient():
         print(type(port), port)
         recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
         recv_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        recv_socket.connect((ip, port))
         recv_socket.settimeout(self.RTP_TIMEOUT / 1000.)
         while self.RTSP_STATUS != RTSPPacket.INVALID and self.RTSP_STATUS != RTSPPacket.TEARDOWN:
             recv = bytes()
             while True:
-                print(len(recv))
                 try:
-                    data, addr = recv_socket.recvfrom(1024)
-                    if ip == addr[0] and port == addr[1]:
-                        recv += data
-                    else:
-                        break
-                    if recv.endswith(CameraStream.IMG_END.encode()):
+                    data = recv_socket.recv(self.SERVER_BUFFER)
+                    recv += data
+
+                    if recv.endswith(CameraStream.IMG_END):
                         break
                 except socket.timeout:
                     continue
             # recv = recv_socket.recv(self.SERVER_BUFFER)
             payload = RTPPacket.from_packet(recv).get_payload()
-            frame = cv2.imdecode(np.asarray(payload["current_display"]), cv2.IMREAD_COLOR)
+            frame = base64.decodebytes(payload)
             self._frame_buffer.append(frame)
             time.sleep(self.SERVER_TIMEOUT / 1000.)
 
@@ -184,16 +184,18 @@ class MediaClient():
         ip = send_ip
         port = RTP_send_port
         send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
-
         send_socket.settimeout(self.RTP_TIMEOUT / 1000.)
 
-        print("Client sending to: %s:%d" % (ip, port))
+            while self.RTSP_STATUS == RTSPPacket.PLAY:
+                frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
+                frame = cv2.imencode(".jpg", frame)[1]
+                data_frame = np.array(frame)
+                str_frame = data_frame.tostring()
 
         while self.RTSP_STATUS == RTSPPacket.PLAY:
             frame, width, height, _, _ = CameraStream().get_next_frame()
             frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_AREA)
-            print(frame.shape)
-            print(frame.tostring()[:10])
+
             packet = RTPPacket(
                 RTPPacket.TYPE.IMG,
                 0,
@@ -201,6 +203,7 @@ class MediaClient():
                 frame.tostring() + CameraStream.IMG_END.encode()
             ).get_packet()
             print("Packet length: ", len(packet))
+            
             to_send = packet[:]
             while to_send:
                 try:

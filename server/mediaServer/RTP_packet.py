@@ -56,7 +56,7 @@ class RTPPacket:
             raise Exception("Packet length is shorter than RTP header size.")
 
         header = packet[: cls.HEADER_SIZE]
-        payload = packet[cls.HEADER_SIZE : -len(CameraStream.IMG_END.encode())]
+        payload = packet[cls.HEADER_SIZE : ]
 
         payload_type = header[1] & 0x7F
         sequence_number = header[2] << 8 | header[3]

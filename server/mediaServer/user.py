@@ -7,7 +7,7 @@ class User():
     def __init__(
         self,
         name: str = None,
-        current_display: np.ndarray = None,
+        current_display: bytes = None,
         width: int = None,
         height: int = None,
         client = None,
