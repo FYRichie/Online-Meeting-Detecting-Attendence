@@ -1,12 +1,9 @@
-import base64
-from io import StringIO
 import socket
 from multiprocessing import Process
 from this import d
 from threading import Thread
 # from threading import Thread
 import time
-from tkinter import Frame
 from typing import Dict
 import json
 import numpy as np
@@ -72,7 +69,6 @@ class MediaServer():
                     users[user_url].name = packet.ip
                     users[user_url].RTP_recv_port = last_port + 1
                     users[user_url].RTP_send_port = last_port + 2
-                    users[user_url].current_display = np.zeros((640, 480, 3))
                     users[user_url].RTP_recv_thread = Thread(target=self.RTP_recv, args=(user_url, users))
                     users[user_url].RTP_send_thread = Thread(target=self.RTP_send, args=(user_url, users))
                     users[user_url].RTP_recv_thread.setDaemon(True)
@@ -128,6 +124,8 @@ class MediaServer():
                         session="none"
                     ).to_bytes()
                     client.send(res)
+                    # users[user_url].RTP_recv_thread.terminate()
+                    # users[user_url].RTP_send_thread.terminate()
 
     def RTP_recv(self, user_url: str, users: Dict[str, User]):
         print("%s recv thread started" % user_url)
@@ -139,6 +137,9 @@ class MediaServer():
         recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP socket
         recv_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         recv_socket.bind((ip, port))
+        # recv_socket.settimeout(self.RTP_TIMEOUT / 1000.)
+
+        print("Server recv url: %s:%d" % (ip, port))
 
         fourcc = cv2.VideoWriter_fourcc(*'MP4V')
         out = cv2.VideoWriter(users[user_url].name, fourcc, 5, (640, 480))
@@ -152,13 +153,13 @@ class MediaServer():
                     try:
                         data = recv_socket.recv(self.CLIENT_BUFFER)
                         recv += data
-                        if recv.endswith(CameraStream.IMG_END):
+                        if recv.endswith(CameraStream.IMG_END.encode()):
                             print("end of image")
                             break
                     except socket.timeout:
                         continue
-                recv = recv[: -len(CameraStream.IMG_END)]
                 payload = RTPPacket.from_packet(recv).get_payload()
+                print(payload[:10])
                 img = np.fromstring(payload, dtype=np.uint8)
                 print(img.shape)
                 self.write_np(img, out)
@@ -182,27 +183,32 @@ class MediaServer():
 
         while True:
             if users[user_url].RTSP_STATUS not in [RTSPPacket.TEARDOWN, RTSPPacket.INVALID]:
+                payload = {}
                 for user in users:
                     if user != user_url and users[user].RTSP_STATUS in [RTSPPacket.PLAY]:
-                        frame = cv2.imencode('.jpg', users[user_url].current_display)[1]
-                        data_frame = np.array(frame)
-                        str_frame = data_frame.tostring()
-
-                        packet = RTPPacket(
-                            RTPPacket.TYPE.IMG,
-                            0,
-                            0,
-                            str_frame
-                        ).get_packet()
+                        _, display = cv2.imencode('.jpg', users[user_url].current_display)
+                        payload[user] = {
+                            "name": users[user_url].name,
+                            "current_display": display.tolist(),
+                            "width": users[user_url].width,
+                            "height": users[user_url].height
+                        }
+                packet = RTPPacket(
+                    RTPPacket.TYPE.IMG,
+                    0,
+                    0,
+                    (json.dumps(payload) + CameraStream.IMG_END).encode()
+                ).get_packet()
                 
-                        to_send = packet[:]
-                        while to_send:
-                            try:
-                                send_socket.sendto(to_send[: self.CLIENT_BUFFER], (user_ip, user_port))
-                            except socket.error as e:
-                                print(f"failed to send rtp packet: {e}")
-                                return
-                            to_send = to_send[self.CLIENT_BUFFER :]
+                to_send = packet[:]
+                while to_send:
+                    try:
+                        send_socket.sendto(to_send[: self.CLIENT_BUFFER], (user_ip, user_port))
+                    except socket.error as e:
+                        print(f"failed to send rtp packet: {e}")
+                        return
+                    to_send = to_send[self.CLIENT_BUFFER :]
+                # send_socket.sendto(packet, (user_ip, user_port))
             time.sleep(self.SERVER_TIMEOUT / 1000.)
         
     def write_np(self, img: np.ndarray, out_file: cv2.VideoWriter):

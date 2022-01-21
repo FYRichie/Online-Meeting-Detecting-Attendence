@@ -5,8 +5,6 @@ from PyQt5.QtCore import pyqtSignal, QTimer, Qt
 from PIL.ImageQt import ImageQt
 import cv2
 
-from utils.RTSP_packet import RTSPPacket
-
 from client import MediaClient as Client
 from utils.camera_stream import CameraStream
 
@@ -97,9 +95,6 @@ class ClientWindow(QMainWindow):
     def update_image(self):
         # print(len(self._media_client._frame_buffer))
         frame_c, width_c, height_c, fps, _ = self.camera.get_next_frame()
-        if self._media_client.RTSP_STATUS == RTSPPacket.PLAY:
-            self._media_client._frame_buffer_send.append(frame_c)
-
         width_c = int(width_c)
         height_c = int(height_c)
         # print(width_c)
@@ -110,6 +105,10 @@ class ClientWindow(QMainWindow):
             pix_c = QPixmap.fromImage(img)
             self.video_player.setPixmap(pix_c)
 
+
+        # if not self._media_client.is_receiving_rtp:
+        #     print(len(self._media_client._frame_buffer))
+        #     return
         # print(len(self._media_client._frame_buffer))
         frame = self._media_client.get_next_frame()
         if frame is not None:

@@ -81,5 +81,4 @@ class RTPPacket:
 
     def get_payload(self):
         return self.payload
-
         # return self.payload.decode("utf-8")
