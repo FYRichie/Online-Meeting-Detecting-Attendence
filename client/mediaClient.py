@@ -16,6 +16,7 @@ class ClientWindow(QMainWindow):
             self,
             host_address: str,
             host_port: int,
+            filename: str = "example.mp4",
             parent=None):
         super(ClientWindow, self).__init__(parent)
         self.video_player = QLabel()
@@ -32,7 +33,7 @@ class ClientWindow(QMainWindow):
         self.tear_button = QPushButton()
         self.error_label = QLabel()
 
-        self._media_client = Client(host_address, host_port)
+        self._media_client = Client(host_address, host_port, filename)
         self._media_client.start()
         self._update_image_signal.connect(self.update_image)
         self._update_image_timer = QTimer()
